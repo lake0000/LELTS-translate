@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instant Wordbook 设置</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Instant Wordbook 设置</h1>
+      <form id="options-form">
+        <label for="server-url">本地服务地址</label>
+        <div class="field-row">
+          <input id="server-url" name="serverUrl" type="url" value="http://127.0.0.1:8787" />
+          <button type="submit">保存</button>
+          <button type="button" id="test-server">测试</button>
+        </div>
+      </form>
+      <p id="status"></p>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
+

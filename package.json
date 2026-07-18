@@ -1,0 +1,22 @@
+{
+  "name": "instant-wordbook-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome/Edge MV3 selection translation extension with local wordbook dashboard and export service.",
+  "type": "commonjs",
+  "scripts": {
+    "server": "node local-server/server.js",
+    "test": "node --test tests/unit/*.test.js",
+    "smoke:server": "node tests/smoke/server-smoke.js",
+    "test:ui": "node tests/ui/dashboard-ui.test.js",
+    "test:e2e": "node tests/e2e/extension-flow.test.js",
+    "test:all": "npm test && npm run smoke:server && npm run test:ui && npm run test:e2e"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.17.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}

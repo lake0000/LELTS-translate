@@ -1,0 +1,290 @@
+:root {
+  color-scheme: light;
+  --ink: #17202a;
+  --muted: #667085;
+  --line: #d9e1ea;
+  --panel: #ffffff;
+  --wash: #eef3f7;
+  --accent: #1967d2;
+  --accent-quiet: #e7f0ff;
+  --danger: #bd2434;
+  --danger-quiet: #fff0f1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  background: var(--wash);
+  color: var(--ink);
+  font: 14px/1.45 "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.sidebar {
+  min-height: 100vh;
+  padding: 20px 14px;
+  border-right: 1px solid var(--line);
+  background: #f8fafc;
+}
+
+.brand {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: #11243a;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 17px;
+}
+
+h2 {
+  font-size: 22px;
+}
+
+.brand p,
+.toolbar-title p {
+  color: var(--muted);
+}
+
+.notebook-list {
+  display: grid;
+  gap: 6px;
+}
+
+.notebook-button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  border-radius: 7px;
+  padding: 10px 11px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.notebook-button:hover,
+.notebook-button.active {
+  background: var(--accent-quiet);
+  color: #0f4fa8;
+}
+
+.new-notebook {
+  display: grid;
+  grid-template-columns: 1fr 36px;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.new-notebook input,
+.toolbar input,
+.toolbar select {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.new-notebook button,
+.toolbar button,
+.row-actions button,
+.inline-edit button {
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 11px;
+  background: #e8edf3;
+  color: #1d2a36;
+  cursor: pointer;
+}
+
+.toolbar button:hover,
+.row-actions button:hover,
+.new-notebook button:hover {
+  background: #dbe5ef;
+}
+
+.workspace {
+  min-width: 0;
+  padding: 22px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.toolbar input {
+  width: min(360px, 40vw);
+}
+
+.table-shell {
+  position: relative;
+  min-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #edf1f5;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f7f9fb;
+  color: #405061;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+tr:hover td {
+  background: #fbfdff;
+}
+
+.word-cell {
+  min-width: 150px;
+  font-weight: 700;
+}
+
+.translation-cell {
+  min-width: 220px;
+  white-space: pre-wrap;
+}
+
+.source-cell {
+  max-width: 260px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.row-actions .danger {
+  background: var(--danger-quiet);
+  color: var(--danger);
+}
+
+.inline-edit {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  gap: 6px;
+}
+
+.inline-edit input,
+.inline-edit select {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px;
+}
+
+.empty-state {
+  position: absolute;
+  inset: 72px 0 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  max-width: min(420px, calc(100vw - 36px));
+  border-radius: 8px;
+  padding: 11px 13px;
+  background: #132337;
+  color: #ffffff;
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.24);
+}
+
+@media (max-width: 860px) {
+  body {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .toolbar input {
+    width: 100%;
+  }
+}
+

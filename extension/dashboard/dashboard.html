@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instant Wordbook</title>
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">IW</div>
+        <div>
+          <h1>Instant Wordbook</h1>
+          <p id="word-count">0 words</p>
+        </div>
+      </div>
+      <nav id="notebook-list" class="notebook-list" aria-label="生词本"></nav>
+      <form id="new-notebook-form" class="new-notebook">
+        <input id="new-notebook-name" type="text" placeholder="新建生词本" maxlength="24" />
+        <button type="submit" title="新建">+</button>
+      </form>
+    </aside>
+
+    <main class="workspace">
+      <header class="toolbar">
+        <div class="toolbar-title">
+          <h2 id="active-notebook-title">全部生词</h2>
+          <p id="active-notebook-meta">Ready</p>
+        </div>
+        <div class="toolbar-actions">
+          <input id="search-input" type="search" placeholder="搜索单词、翻译、来源" />
+          <select id="export-scope" title="导出范围">
+            <option value="current">当前分组</option>
+            <option value="all">全部分组</option>
+          </select>
+          <button type="button" id="export-csv">CSV</button>
+          <button type="button" id="export-xlsx">XLSX</button>
+          <button type="button" id="export-pdf">PDF</button>
+        </div>
+      </header>
+
+      <section class="table-shell" aria-live="polite">
+        <table>
+          <thead>
+            <tr>
+              <th>单词/短语</th>
+              <th>翻译</th>
+              <th>音标</th>
+              <th>来源</th>
+              <th>添加时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="word-table"></tbody>
+        </table>
+        <div id="empty-state" class="empty-state hidden">暂无单词</div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="../shared/normalize.js"></script>
+    <script src="../shared/idb.js"></script>
+    <script src="../shared/export-utils.js"></script>
+    <script src="dashboard.js"></script>
+  </body>
+</html>
+

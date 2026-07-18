@@ -1,0 +1,166 @@
+.iwb-bubble {
+  position: fixed;
+  z-index: 2147483647;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid rgba(26, 38, 52, 0.14);
+  border-radius: 8px;
+  background: #fbfcff;
+  color: #17202a;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2), 0 2px 8px rgba(15, 23, 42, 0.08);
+  font: 14px/1.45 "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.iwb-hidden {
+  display: none !important;
+}
+
+.iwb-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.iwb-word {
+  font-size: 18px;
+  font-weight: 700;
+  color: #101820;
+  overflow-wrap: anywhere;
+}
+
+.iwb-cache {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: #e8f5ee;
+  color: #28724f;
+  font-size: 12px;
+}
+
+.iwb-phonetic {
+  margin-top: 3px;
+  color: #637083;
+}
+
+.iwb-translation {
+  margin-top: 9px;
+  color: #1d2a36;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.iwb-summary {
+  margin-top: 8px;
+  color: #1d2a36;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.iwb-dictionary {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.iwb-dict-entry {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.iwb-pos {
+  color: #1d6fd8;
+  font-weight: 700;
+}
+
+.iwb-dict-entry ol {
+  margin: 0;
+  padding-left: 18px;
+  color: #1d2a36;
+}
+
+.iwb-dict-entry li {
+  margin: 0 0 3px;
+  overflow-wrap: anywhere;
+}
+
+.iwb-loading,
+.iwb-state,
+.iwb-menu-loading,
+.iwb-toast {
+  color: #637083;
+}
+
+.iwb-state-warn {
+  color: #9a5a00;
+}
+
+.iwb-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.iwb-primary,
+.iwb-ghost,
+.iwb-error,
+.iwb-menu-item {
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.iwb-primary {
+  background: #1d6fd8;
+  color: white;
+}
+
+.iwb-ghost {
+  background: #edf2f7;
+  color: #213244;
+}
+
+.iwb-error {
+  width: 100%;
+  background: #fff1f1;
+  color: #ad1f2d;
+  text-align: left;
+}
+
+.iwb-menu-wrap {
+  position: relative;
+}
+
+.iwb-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  min-width: 170px;
+  padding: 6px;
+  border: 1px solid rgba(26, 38, 52, 0.14);
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.18);
+}
+
+.iwb-menu-item {
+  display: block;
+  width: 100%;
+  background: transparent;
+  color: #17202a;
+  text-align: left;
+}
+
+.iwb-menu-item:hover {
+  background: #eef5ff;
+}
+
+.iwb-toast {
+  min-height: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+}

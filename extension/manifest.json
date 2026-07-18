@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Instant Wordbook",
+  "version": "0.1.0",
+  "description": "Shift 划词翻译、本地生词本管理与导出。",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["http://*/*", "https://*/*", "file:///*", "http://127.0.0.1:8787/*", "http://localhost:8787/*"],
+  "action": {
+    "default_title": "打开 Instant Wordbook"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options/options.html",
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*", "file:///*"],
+      "js": [
+        "shared/normalize.js",
+        "content/bubble-ui.js",
+        "content/selection-listener.js"
+      ],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
