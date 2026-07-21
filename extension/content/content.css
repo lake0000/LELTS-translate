@@ -159,6 +159,12 @@
   background: #eef5ff;
 }
 
+.iwb-menu-item:disabled,
+.iwb-menu-item-busy {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .iwb-toast {
   min-height: 18px;
   margin-top: 8px;

@@ -122,8 +122,13 @@
     return response.notebooks || [];
   }
 
-  async function addWord(notebookId) {
+  async function addWord(notebookId, notebookName, trigger) {
     if (!currentResult) return;
+    if (trigger) {
+      trigger.disabled = true;
+      trigger.classList.add("iwb-menu-item-busy");
+      trigger.textContent = "加入中...";
+    }
     const response = await chrome.runtime.sendMessage({
       type: "addWord",
       payload: {
@@ -134,10 +139,22 @@
       }
     });
     if (!response || !response.ok) {
+      if (trigger) {
+        trigger.disabled = false;
+        trigger.classList.remove("iwb-menu-item-busy");
+        trigger.textContent = notebookName;
+      }
       setToast((response && response.message) || "加入失败");
       return;
     }
-    setToast(response.duplicate ? "已在该生词本" : "已加入生词本");
+    const label = notebookName || "生词本";
+    const message = response.duplicate ? `已在${label}` : `已加入${label}`;
+    const menu = root.querySelector(".iwb-menu");
+    const primary = root.querySelector('[data-action="toggle-menu"]');
+    if (menu) menu.classList.add("iwb-hidden");
+    if (primary) primary.textContent = message;
+    setToast(message);
+    positionBubble();
   }
 
   function setToast(message) {
@@ -200,14 +217,14 @@
         const notebooks = await loadNotebooks();
         menu.innerHTML = `${notebookListHtml(notebooks)}<button type="button" class="iwb-menu-item" data-new-notebook="1">+ 新建生词本</button>`;
         menu.querySelectorAll("[data-notebook-id]").forEach((button) => {
-          button.addEventListener("click", () => addWord(button.dataset.notebookId));
+          button.addEventListener("click", () => addWord(button.dataset.notebookId, button.textContent.trim(), button));
         });
         menu.querySelector("[data-new-notebook]").addEventListener("click", async () => {
           const name = prompt("新建生词本名称");
           if (!name) return;
           const response = await chrome.runtime.sendMessage({ type: "createNotebook", name });
           if (response && response.ok) {
-            await addWord(response.notebook.id);
+            await addWord(response.notebook.id, response.notebook.name);
           } else {
             setToast((response && response.message) || "新建失败");
           }

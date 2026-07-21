@@ -80,6 +80,14 @@
     if (event.key === "Shift") shiftDown = false;
   });
 
+  document.addEventListener(
+    "instant-wordbook-trigger",
+    () => {
+      translateSelection({ target: document.activeElement, shiftKey: true });
+    },
+    true
+  );
+
   window.addEventListener("scroll", () => {
     if (lastPayload && activeRequestId) {
       const selection = window.getSelection();

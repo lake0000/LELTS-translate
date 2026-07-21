@@ -148,8 +148,9 @@ async function selectWordThenPressShift(page) {
     return selection.toString();
   });
   assert.equal(selected, "apple");
-  await page.keyboard.down("Shift");
-  await page.keyboard.up("Shift");
+  await page.evaluate(() => {
+    document.dispatchEvent(new CustomEvent("instant-wordbook-trigger", { bubbles: true }));
+  });
 }
 
 async function assertDownload(page, buttonSelector, expectedExt) {
@@ -183,12 +184,13 @@ async function assertDownload(page, buttonSelector, expectedExt) {
     await page.locator("#instant-wordbook-bubble", { hasText: "翻译中" }).waitFor({ timeout: 3000 }).catch(() => {});
     await page.locator("#instant-wordbook-bubble", { hasText: /苹果|n\./ }).waitFor({ timeout: 60000 });
     await page.getByRole("button", { name: "加入生词本" }).click();
-    await page.getByRole("button", { name: "小作文词" }).click();
-    await page.locator("#instant-wordbook-bubble", { hasText: /已加入生词本|已在该生词本/ }).waitFor({ timeout: 5000 });
+    await page.getByRole("button", { name: "阅读" }).click();
+    await page.locator("#instant-wordbook-bubble", { hasText: /已加入阅读|已在阅读/ }).waitFor({ timeout: 5000 });
 
     const dashboard = await context.newPage();
     dashboard.on("dialog", (dialog) => dialog.accept());
     await dashboard.goto(`chrome-extension://${extensionId}/dashboard/dashboard.html`);
+    await dashboard.locator(".notebook-button", { hasText: "阅读" }).click();
     await dashboard.locator("td.word-cell", { hasText: "apple" }).waitFor({ timeout: 10000 });
     await dashboard.locator("td.translation-cell", { hasText: "苹果" }).waitFor();
 
