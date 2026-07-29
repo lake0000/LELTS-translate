@@ -1,7 +1,6 @@
 (function initSelectionListener() {
   if (window.__instantWordbookSelectionListenerReady) return;
   window.__instantWordbookSelectionListenerReady = true;
-  document.documentElement.dataset.instantWordbook = "ready";
 
   let shiftDown = false;
   let activeRequestId = 0;
@@ -69,12 +68,54 @@
     InstantWordbookBubble.showSuccess(response, payload.rect);
   }
 
+  async function analyzeSentenceSelection(event) {
+    const payload = selectionPayload(event);
+    const check = WordTranslateNormalize.validateSentence(payload.text);
+    if (!check.ok) {
+      if (check.code === "TOO_LONG" && payload.rect) {
+        InstantWordbookBubble.showLongText(check.message, payload.rect);
+      }
+      return false;
+    }
+    if (!payload.rect) return false;
+    const requestId = ++activeRequestId;
+    lastPayload = { text: check.text, rect: payload.rect };
+    InstantWordbookBubble.showSentenceLoading(check.text, payload.rect);
+    const response = await chrome.runtime
+      .sendMessage({
+        type: "analyzeSentence",
+        payload: { text: check.text }
+      })
+      .catch((error) => ({ ok: false, message: error.message }));
+    if (requestId !== activeRequestId) return true;
+    if (!response || !response.ok) {
+      InstantWordbookBubble.showError(
+        (response && response.message) || "句子分析失败，点击重试",
+        payload.rect,
+        () => analyzeSentenceSelection({ ...event, target: event.target })
+      );
+      return true;
+    }
+    InstantWordbookBubble.showSentenceSuccess(response, payload.rect);
+    return true;
+  }
+
   document.addEventListener("keydown", (event) => {
+    if (event.ctrlKey && !event.altKey && !event.metaKey && String(event.key).toLowerCase() === "r") {
+      const payload = selectionPayload(event);
+      const check = WordTranslateNormalize.validateSentence(payload.text);
+      if (check.ok || check.code === "TOO_LONG") {
+        event.preventDefault();
+        event.stopPropagation();
+        analyzeSentenceSelection(event);
+      }
+      return;
+    }
     if (event.key !== "Shift") return;
     shiftDown = true;
     if (event.repeat) return;
     translateSelection({ target: document.activeElement, shiftKey: true });
-  });
+  }, true);
 
   document.addEventListener("keyup", (event) => {
     if (event.key === "Shift") shiftDown = false;
@@ -88,6 +129,14 @@
     true
   );
 
+  document.addEventListener(
+    "instant-wordbook-analyze-trigger",
+    () => {
+      analyzeSentenceSelection({ target: document.activeElement });
+    },
+    true
+  );
+
   window.addEventListener("scroll", () => {
     if (lastPayload && activeRequestId) {
       const selection = window.getSelection();
@@ -95,4 +144,6 @@
       if (rect) lastPayload.rect = rect;
     }
   }, { passive: true });
+
+  document.documentElement.dataset.instantWordbook = "ready";
 })();

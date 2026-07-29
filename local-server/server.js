@@ -4,6 +4,7 @@ const path = require("node:path");
 const ExcelJS = require("exceljs");
 const PDFDocument = require("pdfkit");
 const { translateWithYoudao } = require("./youdao");
+const { analyzeSentence, listModels } = require("./mlai");
 const { CSV_HEADERS } = require("../shared/export-utils");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -103,6 +104,8 @@ async function createXlsx(payload) {
     sheet.columns = [
       { header: "生词本", key: "notebook", width: 16 },
       { header: "单词", key: "text", width: 24 },
+      { header: "原形", key: "baseWord", width: 20 },
+      { header: "词形说明", key: "inflectionLabel", width: 18 },
       { header: "翻译", key: "translation", width: 42 },
       { header: "音标", key: "phonetic", width: 18 },
       { header: "来源标题", key: "sourceTitle", width: 30 },
@@ -114,6 +117,8 @@ async function createXlsx(payload) {
       sheet.addRow({
         notebook: group.notebook.name,
         text: word.text || "",
+        baseWord: word.baseWord || "",
+        inflectionLabel: word.inflectionLabel || "",
         translation: word.translation || "",
         phonetic: word.phonetic || "",
         sourceTitle: word.sourceTitle || "",
@@ -165,6 +170,10 @@ function createPdf(payload) {
       for (const word of group.words) {
         if (doc.y > doc.page.height - 96) doc.addPage();
         doc.fillColor("#17202a").fontSize(12).text(`${index}. ${word.text || ""}`, { width: 330 });
+        if (word.baseWord) {
+          const form = `${word.text || ""} -> ${word.baseWord}${word.inflectionLabel ? ` (${word.inflectionLabel})` : ""}`;
+          doc.fillColor("#1d6fd8").fontSize(9).text(`词形：${form}`, { width: 330 });
+        }
         if (word.phonetic) doc.fillColor("#667085").fontSize(10).text(`/${word.phonetic}/`);
         doc.fillColor("#1d2a36").fontSize(11).text(word.translation || "", { width: 330 });
         const source = word.sourceTitle || word.sourceUrl || "";
@@ -190,6 +199,11 @@ async function handleRequest(req, res) {
       ok: true,
       service: "instant-wordbook-local-server",
       mock: String(process.env.YOUDAO_MOCK).toLowerCase() === "true",
+      gpt: {
+        configured: Boolean(process.env.MLAI_API_KEY || process.env.OPENAI_API_KEY),
+        mock: String(process.env.MLAI_MOCK).toLowerCase() === "true",
+        baseUrl: process.env.MLAI_BASE_URL ? "configured" : "default"
+      },
       port: Number(process.env.PORT || 8787)
     });
     return;
@@ -197,6 +211,17 @@ async function handleRequest(req, res) {
   if (req.method === "POST" && url.pathname === "/api/translate") {
     const body = await readBody(req);
     const result = await translateWithYoudao(body);
+    json(res, result.ok ? 200 : 400, result);
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/api/analyze-sentence") {
+    const body = await readBody(req);
+    const result = await analyzeSentence(body);
+    json(res, result.ok ? 200 : 400, result);
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/api/models") {
+    const result = await listModels();
     json(res, result.ok ? 200 : 400, result);
     return;
   }
@@ -254,4 +279,3 @@ module.exports = {
   findPdfFont,
   loadEnvFile
 };
-

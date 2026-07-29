@@ -17,6 +17,15 @@ test("validateSelection rejects empty, punctuation-only, and too long text", () 
   assert.equal(normalize.validateSelection("a".repeat(301)).code, "TOO_LONG");
 });
 
+test("validateSentence accepts longer sentences and rejects oversized paragraphs", () => {
+  const sentence = normalize.validateSentence("Although the task was difficult, the team finished it on time.");
+  assert.equal(sentence.ok, true);
+  assert.equal(sentence.text.includes("Although"), true);
+  const tooLong = normalize.validateSentence("a".repeat(normalize.MAX_SENTENCE_LENGTH + 1));
+  assert.equal(tooLong.ok, false);
+  assert.equal(tooLong.code, "TOO_LONG");
+});
+
 test("normalizeWord treats case and edge punctuation consistently", () => {
   assert.equal(normalize.normalizeWord(" Apple, "), "apple");
   assert.equal(normalize.normalizeWord("Ｈｅｌｌｏ"), "hello");
@@ -50,8 +59,7 @@ test("CSV export includes BOM, headers, Chinese text, and escaping", () => {
     ]
   );
   assert.equal(csv.charCodeAt(0), 0xfeff);
-  assert.match(csv, /生词本,单词,翻译/);
+  assert.match(csv, /生词本,单词,原形,词形说明,翻译/);
   assert.match(csv, /"apple, ""fruit"""/);
   assert.match(csv, /苹果/);
 });
-

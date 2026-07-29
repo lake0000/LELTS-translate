@@ -16,10 +16,16 @@
           <button type="submit">保存</button>
           <button type="button" id="test-server">测试</button>
         </div>
+        <label for="sentence-model">GPT 句子分析模型</label>
+        <div class="field-row model-row">
+          <select id="sentence-model" name="sentenceModel">
+            <option value="">使用本地服务默认模型</option>
+          </select>
+          <button type="button" id="refresh-models">刷新模型</button>
+        </div>
       </form>
       <p id="status"></p>
     </main>
     <script src="options.js"></script>
   </body>
 </html>
-

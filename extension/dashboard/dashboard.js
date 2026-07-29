@@ -1,7 +1,12 @@
 (function initDashboard() {
   const state = {
     notebooks: [],
+    sentenceNotebooks: [],
     words: [],
+    allWords: [],
+    sentences: [],
+    allSentences: [],
+    view: "words",
     activeNotebookId: "all",
     query: "",
     editingId: ""
@@ -10,6 +15,7 @@
   const els = {
     notebookList: document.getElementById("notebook-list"),
     wordTable: document.getElementById("word-table"),
+    tableHead: document.getElementById("table-head"),
     emptyState: document.getElementById("empty-state"),
     searchInput: document.getElementById("search-input"),
     wordCount: document.getElementById("word-count"),
@@ -18,6 +24,9 @@
     newNotebookForm: document.getElementById("new-notebook-form"),
     newNotebookName: document.getElementById("new-notebook-name"),
     exportScope: document.getElementById("export-scope"),
+    exportCsv: document.getElementById("export-csv"),
+    exportXlsx: document.getElementById("export-xlsx"),
+    exportPdf: document.getElementById("export-pdf"),
     toast: document.getElementById("toast")
   };
 
@@ -52,35 +61,101 @@
     return WordTranslateNormalize.safeDomain(word.sourceUrl) || "";
   }
 
+  function inflectionCell(word) {
+    if (!word.baseWord) return "";
+    const base = word.baseTranslation ? `${word.baseWord}：${word.baseTranslation}` : word.baseWord;
+    return `<div class="form-cell">
+      <div>${escapeHtml(word.text)} → <strong>${escapeHtml(base)}</strong></div>
+      <small>${escapeHtml(word.inflectionLabel || "变形")}</small>
+    </div>`;
+  }
+
+  function parseAnalysis(sentence) {
+    try {
+      return JSON.parse(sentence.analysisJson || "{}");
+    } catch (_error) {
+      return {};
+    }
+  }
+
+  function segmentRoleClass(role) {
+    const allowed = new Set(["core", "subject", "predicate", "object", "modifier", "connector", "clause", "phrase"]);
+    return allowed.has(role) ? role : "other";
+  }
+
+  function sentenceHighlightHtml(sentence) {
+    const analysis = parseAnalysis(sentence);
+    const segments = Array.isArray(analysis.segments) ? analysis.segments : [];
+    if (!segments.length) return escapeHtml(sentence.text || "");
+    return `<div class="sentence-highlight">${segments
+      .map((segment) => `<span class="sentence-segment sentence-${segmentRoleClass(segment.role)}" title="${escapeHtml(segment.note || segment.label || "")}">
+        <span>${escapeHtml(segment.text || "")}</span>
+        <small>${escapeHtml(segment.label || "")}</small>
+      </span>`)
+      .join(" ")}</div>`;
+  }
+
+  function compactItems(items, key) {
+    if (!Array.isArray(items)) return "";
+    return items
+      .slice(0, 4)
+      .map((item) => [item.text, item[key]].filter(Boolean).join("："))
+      .filter(Boolean)
+      .join("\n");
+  }
+
   async function loadData() {
     await WordbookDB.initDefaultNotebooks();
+    await WordbookDB.initDefaultSentenceNotebooks();
     state.notebooks = await WordbookDB.listNotebooks();
+    state.sentenceNotebooks = await WordbookDB.listSentenceNotebooks();
+    state.allWords = await WordbookDB.listWords({ notebookId: "all", query: "" });
     state.words = await WordbookDB.listWords({
       notebookId: state.activeNotebookId,
+      query: state.query
+    });
+    state.allSentences = await WordbookDB.listSentences({ notebookId: "all", query: "" });
+    state.sentences = await WordbookDB.listSentences({
+      notebookId: "sentence_default",
       query: state.query
     });
     render();
   }
 
   function renderNotebooks() {
-    const allCount = state.words.length;
+    const allCount = state.allWords.length;
     const buttons = [
       `<button type="button" class="notebook-button ${state.activeNotebookId === "all" ? "active" : ""}" data-notebook-id="all">
         <span>全部生词</span><span>${allCount}</span>
       </button>`
     ];
     for (const notebook of state.notebooks) {
-      const count = state.words.filter((word) => state.activeNotebookId === notebook.id || word.notebookId === notebook.id).length;
+      const count = state.allWords.filter((word) => word.notebookId === notebook.id).length;
       buttons.push(
         `<button type="button" class="notebook-button ${state.activeNotebookId === notebook.id ? "active" : ""}" data-notebook-id="${escapeHtml(notebook.id)}">
           <span>${escapeHtml(notebook.name)}</span><span>${count}</span>
         </button>`
       );
     }
+    const sentenceCount = state.allSentences.length;
+    buttons.push(
+      `<button type="button" class="notebook-button notebook-button-sentence ${state.view === "sentences" ? "active" : ""}" data-sentence-view="1">
+        <span>句子本</span><span>${sentenceCount}</span>
+      </button>`
+    );
     els.notebookList.innerHTML = buttons.join("");
     els.notebookList.querySelectorAll("[data-notebook-id]").forEach((button) => {
       button.addEventListener("click", async () => {
+        state.view = "words";
         state.activeNotebookId = button.dataset.notebookId;
+        state.editingId = "";
+        await loadData();
+      });
+    });
+    els.notebookList.querySelectorAll("[data-sentence-view]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        state.view = "sentences";
+        state.activeNotebookId = "sentence_default";
         state.editingId = "";
         await loadData();
       });
@@ -91,7 +166,7 @@
     const notebookOptions = state.notebooks
       .map((notebook) => `<option value="${escapeHtml(notebook.id)}" ${notebook.id === word.notebookId ? "selected" : ""}>${escapeHtml(notebook.name)}</option>`)
       .join("");
-    return `<td colspan="6">
+    return `<td colspan="7">
       <form class="inline-edit" data-edit-id="${escapeHtml(word.id)}">
         <input name="translation" value="${escapeHtml(word.translation)}" />
         <select name="notebookId">${notebookOptions}</select>
@@ -102,12 +177,18 @@
   }
 
   function renderRows() {
+    if (state.view === "sentences") {
+      renderSentenceRows();
+      return;
+    }
+    els.tableHead.innerHTML = `<th>单词/短语</th><th>词形</th><th>翻译</th><th>音标</th><th>来源</th><th>添加时间</th><th>操作</th>`;
     els.emptyState.classList.toggle("hidden", state.words.length > 0);
     els.wordTable.innerHTML = state.words
       .map((word) => {
         if (state.editingId === word.id) return `<tr>${editRow(word)}</tr>`;
         return `<tr>
           <td class="word-cell">${escapeHtml(word.text)}</td>
+          <td class="form-cell-wrap">${inflectionCell(word) || '<span class="muted">-</span>'}</td>
           <td class="translation-cell">${escapeHtml(word.translation)}</td>
           <td>${escapeHtml(word.phonetic || "")}</td>
           <td class="source-cell">${escapeHtml(sourceLabel(word))}</td>
@@ -125,11 +206,46 @@
     bindRowActions();
   }
 
+  function renderSentenceRows() {
+    els.tableHead.innerHTML = `<th>句子</th><th>拆解高亮</th><th>翻译</th><th>常用表达</th><th>难点</th><th>来源</th><th>添加时间</th><th>操作</th>`;
+    els.emptyState.textContent = "暂无句子";
+    els.emptyState.classList.toggle("hidden", state.sentences.length > 0);
+    els.wordTable.innerHTML = state.sentences
+      .map((sentence) => {
+        const analysis = parseAnalysis(sentence);
+        return `<tr>
+          <td class="sentence-text-cell">${escapeHtml(sentence.text || "")}</td>
+          <td class="sentence-highlight-cell">${sentenceHighlightHtml(sentence)}</td>
+          <td class="translation-cell">${escapeHtml(sentence.translation || analysis.translation || "")}</td>
+          <td class="source-cell">${escapeHtml(compactItems(analysis.expressions, "meaning"))}</td>
+          <td class="source-cell">${escapeHtml(compactItems(analysis.difficulties, "note"))}</td>
+          <td class="source-cell">${escapeHtml(sourceLabel(sentence))}</td>
+          <td>${escapeHtml(formatDate(sentence.createdAt))}</td>
+          <td><div class="row-actions"><button type="button" class="danger" data-delete-sentence="${escapeHtml(sentence.id)}">删除</button></div></td>
+        </tr>`;
+      })
+      .join("");
+    bindSentenceRowActions();
+  }
+
   function renderMeta() {
+    els.newNotebookForm.classList.toggle("hidden", state.view === "sentences");
+    els.exportScope.disabled = state.view === "sentences";
+    els.exportCsv.disabled = state.view === "sentences";
+    els.exportXlsx.disabled = state.view === "sentences";
+    els.exportPdf.disabled = state.view === "sentences";
+    els.searchInput.placeholder = state.view === "sentences" ? "搜索句子、翻译、来源" : "搜索单词、翻译、来源";
+    if (state.view === "sentences") {
+      els.activeTitle.textContent = "句子本";
+      els.activeMeta.textContent = state.query ? `搜索结果 ${state.sentences.length} 条` : `${state.sentences.length} 条记录`;
+      els.wordCount.textContent = `${state.allWords.length} words · ${state.allSentences.length} sentences`;
+      return;
+    }
     const current = state.activeNotebookId === "all" ? null : state.notebooks.find((item) => item.id === state.activeNotebookId);
     els.activeTitle.textContent = current ? current.name : "全部生词";
     els.activeMeta.textContent = state.query ? `搜索结果 ${state.words.length} 条` : `${state.words.length} 条记录`;
-    els.wordCount.textContent = `${state.words.length} words`;
+    els.wordCount.textContent = `${state.allWords.length} words`;
+    els.emptyState.textContent = "暂无单词";
   }
 
   function render() {
@@ -179,6 +295,19 @@
         });
         state.editingId = "";
         showToast("已保存");
+        await loadData();
+      });
+    });
+  }
+
+  function bindSentenceRowActions() {
+    els.wordTable.querySelectorAll("[data-delete-sentence]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const sentence = state.sentences.find((item) => item.id === button.dataset.deleteSentence);
+        if (!sentence) return;
+        if (!confirm("删除这个句子？")) return;
+        await WordbookDB.deleteSentence(sentence.id);
+        showToast("已删除");
         await loadData();
       });
     });
@@ -245,4 +374,3 @@
 
   loadData().catch((error) => showToast(error.message || "加载失败"));
 })();
-

@@ -29,11 +29,12 @@ async function post(pathname, payload) {
 (async () => {
   const child = spawn(process.execPath, ["local-server/server.js"], {
     cwd: root,
-    env: {
-      ...process.env,
-      PORT: String(port),
-      YOUDAO_MOCK: "true"
-    },
+      env: {
+        ...process.env,
+        PORT: String(port),
+        YOUDAO_MOCK: "true",
+        MLAI_MOCK: "true"
+      },
     stdio: ["ignore", "pipe", "pipe"]
   });
   let stderr = "";
@@ -50,6 +51,15 @@ async function post(pathname, payload) {
     const translation = await translateResponse.json();
     assert.equal(translation.ok, true);
     assert.match(translation.translation, /苹果/);
+
+    const analyzeResponse = await post("/api/analyze-sentence", {
+      text: "Although the task was difficult, the team finished it on time."
+    });
+    assert.equal(analyzeResponse.ok, true);
+    const analysis = await analyzeResponse.json();
+    assert.equal(analysis.ok, true);
+    assert.equal(analysis.analysis.translation.length > 0, true);
+    assert.equal(Array.isArray(analysis.analysis.segments), true);
 
     const sample = {
       scopeName: "阅读",
@@ -86,4 +96,3 @@ async function post(pathname, payload) {
   console.error(error);
   process.exit(1);
 });
-

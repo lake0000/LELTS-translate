@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/cover.png" alt="Instant Wordbook cover" width="920">
+  <img src="docs/cover.png" alt="Instant Wordbook cover" width="900">
 </p>
 
-<h1 align="center">Instant Wordbook</h1>
+<h1 align="center">LELTS Translate</h1>
 
 <p align="center">
-  <strong>浏览器划词翻译 + 本地生词本 + Dashboard 管理 + CSV/XLSX/PDF 导出</strong>
+  <strong>Browser selection translation, GPT sentence parsing, local wordbook, dashboard, and export tools for English reading practice.</strong>
 </p>
 
 <p align="center">
@@ -15,171 +15,228 @@
   <img alt="License" src="https://img.shields.io/badge/License-MIT-111827">
 </p>
 
-## 目录
+## What Is This?
 
-- [项目亮点](#项目亮点)
-- [工作方式](#工作方式)
-- [快速开始](#快速开始)
-- [配置有道 Key](#配置有道-key)
-- [浏览器加载插件](#浏览器加载插件)
-- [日常使用](#日常使用)
-- [测试](#测试)
-- [目录结构](#目录结构)
-- [隐私与安全](#隐私与安全)
-- [常见问题](#常见问题)
-- [License](#license)
+LELTS Translate, also known in the extension UI as **Instant Wordbook**, is a local-first Chrome/Edge extension for English reading practice.
 
-## 项目亮点
+It is not only a simple selection translator. It combines:
 
-Instant Wordbook 是一个本地优先的英语学习浏览器插件，适合阅读网页、雅思阅读材料、本地 HTML 练习页时快速收集生词。
+- Selection word and phrase translation
+- Local wordbook management
+- GPT-powered sentence structure analysis
+- A sentence notebook that preserves parsed components and highlights
+- A dashboard for searching, editing, moving, deleting, and exporting learning data
 
-- 先划词，再按 `Shift`，避免按住 Shift 拖选时和网页快捷键冲突
-- 支持普通网页和已授权的 `file:///` 本地 HTML 页面
-- 翻译浮窗展示主译、词性、多义项和加入生词本入口
-- 默认生词本：`小作文词`、`阅读`
-- Dashboard 支持搜索、编辑、移动、删除和新建分组
-- 支持导出 `CSV`、`XLSX`、`PDF`
-- 翻译缓存会保存已查过的词，减少重复 API 调用
-- 有道密钥只保存在本地服务 `.env`，不会进入插件源码
+The project is especially useful for IELTS-style reading practice, English news reading, and local HTML reading exercises.
 
-## 工作方式
+## Preview
+
+### Selection Translation
+
+<p align="center">
+  <img src="docs/screenshots/01-word-translation.png" alt="Selection translation on IELTS reading page" width="900">
+</p>
+
+### Sentence Analysis
+
+<p align="center">
+  <img src="docs/screenshots/02-sentence-analysis.png" alt="GPT sentence analysis popup" width="900">
+</p>
+
+### Sentence Notebook
+
+<p align="center">
+  <img src="docs/screenshots/04-sentence-dashboard.png" alt="Sentence notebook dashboard" width="900">
+</p>
+
+### Saved Sentence Breakdown
+
+<p align="center">
+  <img src="docs/screenshots/03-sentence-dashboard-annotated.png" alt="Saved sentence breakdown in dashboard" width="900">
+</p>
+
+## Features
+
+- Select a word or phrase, then press `Shift` to translate.
+- Select a full sentence, then press `Ctrl+R` to analyze sentence structure with GPT.
+- Highlight sentence components with different colors, such as subject, predicate, modifier, connector, and clause.
+- Hover over a highlighted component to view the short explanation returned by GPT.
+- Save words into local notebooks, including the default `小作文词` and `阅读` groups.
+- Save analyzed sentences into the local `句子本`.
+- Manage data in the dashboard: search, edit, move, delete, and create groups.
+- Export wordbook data to `CSV`, `XLSX`, and `PDF`.
+- Use IndexedDB for local storage.
+- Keep API secrets outside extension source code by using a local Node.js proxy server.
+
+## How It Works
 
 ```txt
-网页选区
-  ↓
-Chrome / Edge Manifest V3 content script
-  ↓
-extension service worker
-  ↓
-本地 Node.js 翻译代理服务
-  ↓
-有道文本翻译 API / 词典增强回退
-  ↓
-IndexedDB 缓存和本地生词本
+Web page selection
+  -> Manifest V3 content script
+  -> Extension service worker
+  -> Local Node.js server
+  -> Translation API / GPT API
+  -> Browser popup and local IndexedDB
 ```
 
-为什么需要本地服务：
+The extension itself does not contain private API keys. All API requests go through the local server at:
 
-- 浏览器插件源码容易被查看，不能把有道密钥写进插件
-- 本地服务负责读取 `.env`、签名和请求有道 API
-- 插件只和 `http://127.0.0.1:8787` 通信
+```txt
+http://127.0.0.1:8787
+```
 
-## 快速开始
+## Requirements
+
+- Windows, macOS, or Linux
+- Node.js 18 or later
+- npm
+- Chrome or Microsoft Edge
+- API credentials for translation and/or GPT sentence analysis
+
+## Quick Start
 
 ```powershell
-git clone <your-repo-url>
-cd <repo-folder>
+git clone https://github.com/<your-name>/LELTS-translate.git
+cd LELTS-translate
 npm install
 cp local-server/.env.example local-server/.env
 npm run server
 ```
 
-然后在浏览器扩展管理页加载 `extension` 目录。
-
-如果只是想先体验流程，没有有道 Key，可以把 `local-server/.env` 设置成 mock 模式：
+Then load the extension directory in Chrome or Edge:
 
 ```txt
-YOUDAO_MOCK=true
-PORT=8787
+extension/
 ```
 
-mock 模式只适合测试，不会返回真实翻译。
+## API Configuration
 
-## 配置有道 Key
-
-复制配置文件：
+Copy the example environment file:
 
 ```powershell
 cp local-server/.env.example local-server/.env
 ```
 
-编辑 `local-server/.env`：
+Edit `local-server/.env`:
 
 ```txt
-YOUDAO_APP_KEY=你的应用ID
-YOUDAO_APP_SECRET=你的应用密钥
+YOUDAO_APP_KEY=
+YOUDAO_APP_SECRET=
 YOUDAO_MOCK=false
 PORT=8787
 PDF_FONT_PATH=
+
+MLAI_API_KEY=
+MLAI_BASE_URL=https://www.mlai.online/
+MLAI_MODEL=gpt-5.4-mini
+MLAI_MOCK=false
 ```
 
-字段说明：
+### Translation API
 
-- `YOUDAO_APP_KEY`：有道智云应用 ID
-- `YOUDAO_APP_SECRET`：有道智云应用密钥
-- `YOUDAO_MOCK`：是否启用模拟翻译；真实使用填 `false`
-- `PORT`：本地服务端口，默认 `8787`
-- `PDF_FONT_PATH`：可选，PDF 导出使用的中文字体路径
+The current implementation supports Youdao translation through the local server.
 
-启动服务：
+You need to apply for your own API credentials. Platforms such as Youdao, iFlytek, and other language API providers often provide free or trial quotas. Check the provider console for current quota, pricing, and service rules.
 
-```powershell
-npm run server
-```
-
-健康检查：
+Only the following file should contain private credentials:
 
 ```txt
-http://127.0.0.1:8787/health
+local-server/.env
 ```
 
-正常返回类似：
+Do not commit this file.
 
-```json
-{
-  "ok": true,
-  "service": "instant-wordbook-local-server",
-  "mock": false,
-  "port": 8787
-}
+### GPT Sentence Analysis API
+
+Sentence analysis uses an OpenAI-compatible chat completions endpoint.
+
+Default example:
+
+```txt
+MLAI_BASE_URL=https://www.mlai.online/
+MLAI_MODEL=gpt-5.4-mini
 ```
 
-## 浏览器加载插件
+The model can also be changed from the extension options page:
 
-Chrome：
+1. Open the extension details page.
+2. Open **Extension options**.
+3. Click **Refresh models**.
+4. Choose a model such as `gpt-5.4-mini`, `gpt-5.4`, or `gpt-5.6`.
+5. Save.
+
+Speed note from local testing:
+
+- `gpt-5.4-mini`: fastest, good as the default
+- `gpt-5.4`: balanced
+- `gpt-5.6`: slower, useful when you want more detailed parsing
+
+## Load In Browser
+
+Chrome:
 
 ```txt
 chrome://extensions
 ```
 
-Edge：
+Edge:
 
 ```txt
 edge://extensions
 ```
 
-加载步骤：
+Steps:
 
-1. 打开“开发者模式”
-2. 点击“加载已解压的扩展程序”
-3. 选择项目里的 `extension` 目录
-4. 如果要在本地 HTML 文件中使用，打开“允许访问文件 URL”
-5. 加载或重新加载插件后，刷新要翻译的网页
+1. Enable **Developer mode**.
+2. Click **Load unpacked**.
+3. Select the project `extension/` directory.
+4. Refresh the web page where you want to use the extension.
+5. For local `file:///` HTML pages, enable **Allow access to file URLs** in the extension details page.
 
-## 日常使用
+## Usage
+
+### Translate Words
 
 ```txt
-划选英文单词或短语 → 按一下 Shift → 查看翻译浮窗 → 加入生词本
+Select an English word or phrase -> press Shift -> view translation popup -> add to wordbook
 ```
 
-点击插件图标可以打开 Dashboard：
+### Analyze Sentences
 
-- 切换生词本
-- 搜索单词
-- 编辑翻译
-- 移动到其他分组
-- 删除生词
-- 导出 CSV / XLSX / PDF
+```txt
+Select an English sentence -> press Ctrl+R -> view highlighted sentence analysis -> add to sentence notebook
+```
 
-## 测试
+The sentence popup focuses on:
 
-完整测试：
+- Highlighted sentence components
+- Full Chinese translation
+- Short hover explanations for each component
+
+Sentence analysis is not query-cached by default. Each `Ctrl+R` analysis calls the GPT API directly.
+
+### Manage Your Data
+
+Click the extension icon to open the dashboard.
+
+You can:
+
+- Search words or sentences
+- Edit word translations
+- Move words between notebooks
+- Delete saved items
+- View saved sentence breakdowns
+- Export wordbook data
+
+## Testing
+
+Run all tests:
 
 ```powershell
 npm run test:all
 ```
 
-单独运行：
+Run specific test groups:
 
 ```powershell
 npm test
@@ -188,100 +245,60 @@ npm run test:ui
 npm run test:e2e
 ```
 
-覆盖内容：
+Test coverage includes:
 
-- 文本标准化和长度校验
-- 有道签名
-- CSV BOM 和转义
-- 词典增强
-- 本地服务健康检查和导出
+- Text normalization
+- Youdao signing logic
+- CSV export
+- Local server health checks
+- XLSX and PDF export
 - Dashboard UI
-- 插件端到端链路
+- Extension end-to-end flow
+- GPT sentence analysis and sentence notebook persistence
 
-## 目录结构
+## Project Structure
 
 ```txt
-extension/       浏览器插件代码
-  content/       划词监听和浮窗
-  dashboard/     生词本管理页
-  icons/         扩展图标
-local-server/    本地翻译代理和导出服务
-shared/          插件与服务共用工具
-tests/           自动化测试
-docs/            README 图片资源
-scripts/         开发辅助脚本
+extension/          Browser extension source
+  background.js     Manifest V3 service worker
+  content/          Selection listener and popup UI
+  dashboard/        Wordbook and sentence notebook dashboard
+  options/          Local server and GPT model settings
+  shared/           Browser-side shared utilities
+
+local-server/       Local Node.js API proxy and export service
+shared/             Node/browser shared utilities
+tests/              Unit, smoke, UI, and E2E tests
+docs/               README assets and screenshots
+scripts/            Development helper scripts
 ```
 
-## 隐私与安全
+## Privacy And Security
 
-- `.env` 已被 `.gitignore` 忽略
-- 仓库只提交 `local-server/.env.example`
-- 不要把真实 Key 写进插件源码
-- 不要把真实 Key 提交到 Git
-- 发布包不应包含 `local-server/.env`
-- 生词默认保存在本地浏览器 IndexedDB
-- 新词翻译会请求有道 API；已缓存词可直接本地读取
+- Real API keys are not included in this repository.
+- `local-server/.env` is ignored by Git.
+- The extension source does not contain private credentials.
+- Word and sentence notebook data is stored locally in browser IndexedDB.
+- New translations call the configured translation API.
+- GPT sentence analysis calls the configured GPT API.
+- Export files are generated locally.
 
-确认 `.env` 没有被 Git 跟踪：
+Before publishing your own fork, check:
 
 ```powershell
 git status --short
 git ls-files local-server/.env
 ```
 
-如果第二个命令没有输出，说明 `.env` 没有被提交。
+`git ls-files local-server/.env` should print nothing.
 
-## 常见问题
+## Known Limitations
 
-### 插件 UI 能打开，但划词没反应
-
-检查：
-
-- 当前页面是否是 `http://`、`https://` 或已授权的 `file:///`
-- 加载插件后是否刷新过当前网页
-- 扩展详情页是否允许访问当前站点
-- 本地文件页面是否打开“允许访问文件 URL”
-
-在网页 Console 输入：
-
-```js
-document.documentElement.dataset.instantWordbook
-```
-
-正常应返回：
-
-```txt
-"ready"
-```
-
-### 没网能不能用
-
-可以离线使用：
-
-- Dashboard
-- 已保存的生词
-- 已缓存翻译
-- CSV / XLSX / PDF 导出
-
-新单词首次翻译需要联网。
-
-### 别人拉取项目后在哪里填 Key
-
-每个人都在自己的本地文件里填写：
-
-```txt
-local-server/.env
-```
-
-不要把这个文件提交。
-
-## 参考
-
-- [GitHub Docs: About READMEs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes)
-- [Chrome Extensions: Manifest icons](https://developer.chrome.com/docs/extensions/reference/manifest/icons)
-- [Chrome Extensions: action default_icon](https://developer.chrome.com/docs/extensions/reference/api/action)
+- The extension cannot run on browser internal pages such as `chrome://` or `edge://`.
+- Local file pages require explicit browser permission.
+- GPT sentence analysis speed depends on the model and API provider.
+- XLSX and PDF export require the local server to be running.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
-
+This project is released under the [MIT License](LICENSE).

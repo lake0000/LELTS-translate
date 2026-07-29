@@ -34,14 +34,17 @@ label {
 }
 
 input,
+select,
 button {
   border-radius: 7px;
   padding: 9px 10px;
   font: inherit;
 }
 
-input {
+input,
+select {
   border: 1px solid #d9e1ea;
+  background: white;
 }
 
 button {
@@ -56,6 +59,24 @@ button {
   color: #1d2a36;
 }
 
+.model-row {
+  grid-template-columns: minmax(220px, 1fr) auto;
+  margin-top: 0;
+}
+
+label + .model-row {
+  margin-bottom: 0;
+}
+
+form label:not(:first-child) {
+  margin-top: 16px;
+}
+
+#refresh-models {
+  background: #e8edf3;
+  color: #1d2a36;
+}
+
 #status {
   min-height: 20px;
   color: #667085;
@@ -66,4 +87,3 @@ button {
     grid-template-columns: 1fr;
   }
 }
-

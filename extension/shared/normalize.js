@@ -7,6 +7,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function createNormalize() {
   const MAX_SELECTION_LENGTH = 300;
   const MAX_SHORT_PHRASE_LENGTH = 120;
+  const MAX_SENTENCE_LENGTH = 800;
 
   function normalizeWhitespace(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
@@ -34,6 +35,30 @@
     }
     if (!/[\p{L}\p{N}]/u.test(text)) {
       return { ok: false, code: "INVALID", message: "请选择单词或短句", text };
+    }
+    return {
+      ok: true,
+      text,
+      normalized: normalizeWord(text),
+      isShortPhrase: text.length <= MAX_SHORT_PHRASE_LENGTH
+    };
+  }
+
+  function validateSentence(value) {
+    const text = normalizeWhitespace(value);
+    if (!text) {
+      return { ok: false, code: "EMPTY", message: "未选择可分析句子", text };
+    }
+    if (text.length > MAX_SENTENCE_LENGTH) {
+      return {
+        ok: false,
+        code: "TOO_LONG",
+        message: "句子过长，请选择一个句子或较短段落",
+        text
+      };
+    }
+    if (!/[\p{L}\p{N}]/u.test(text)) {
+      return { ok: false, code: "INVALID", message: "请选择含文字的句子", text };
     }
     return {
       ok: true,
@@ -72,13 +97,14 @@
   return {
     MAX_SELECTION_LENGTH,
     MAX_SHORT_PHRASE_LENGTH,
+    MAX_SENTENCE_LENGTH,
     normalizeWhitespace,
     normalizeWord,
     validateSelection,
+    validateSentence,
     truncateForYoudaoSign,
     safeDomain,
     nowIso,
     createId
   };
 });
-

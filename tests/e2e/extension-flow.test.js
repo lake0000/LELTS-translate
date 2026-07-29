@@ -38,6 +38,15 @@ async function requireRealTranslateService() {
   if (!response.ok || !data || !data.ok || !String(data.translation || "").includes("苹果")) {
     throw new Error(`真实翻译接口不可用：${JSON.stringify(data)}`);
   }
+  const analyzeResponse = await fetch(`${LOCAL_SERVER}/api/analyze-sentence`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text: "Although the task was difficult, the team finished it on time." })
+  });
+  const analysis = await analyzeResponse.json().catch(() => null);
+  if (!analyzeResponse.ok || !analysis || !analysis.ok || !analysis.analysis || !analysis.analysis.translation) {
+    throw new Error(`真实句子分析接口不可用：${JSON.stringify(analysis)}`);
+  }
 }
 
 async function ensureRealTranslateService() {
@@ -82,6 +91,7 @@ function createStaticPageServer() {
         <main>
           <h1>Reading Sample</h1>
           <p>The word <span data-test-word="apple">apple</span> is selected for translation testing.</p>
+          <p><span data-test-sentence="analysis">Although the task was difficult, the team finished it on time.</span></p>
         </main>
       </body>
     </html>`;
@@ -153,6 +163,24 @@ async function selectWordThenPressShift(page) {
   });
 }
 
+async function selectSentenceThenAnalyze(page) {
+  const sentence = page.locator("[data-test-sentence='analysis']");
+  await sentence.waitFor();
+  const selected = await page.evaluate(() => {
+    const node = document.querySelector("[data-test-sentence='analysis']");
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return selection.toString();
+  });
+  assert.match(selected, /Although the task/);
+  await page.evaluate(() => {
+    document.dispatchEvent(new CustomEvent("instant-wordbook-analyze-trigger", { bubbles: true }));
+  });
+}
+
 async function assertDownload(page, buttonSelector, expectedExt) {
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -186,6 +214,13 @@ async function assertDownload(page, buttonSelector, expectedExt) {
     await page.getByRole("button", { name: "加入生词本" }).click();
     await page.getByRole("button", { name: "阅读" }).click();
     await page.locator("#instant-wordbook-bubble", { hasText: /已加入阅读|已在阅读/ }).waitFor({ timeout: 5000 });
+    await selectSentenceThenAnalyze(page);
+    await page.locator("#instant-wordbook-bubble", { hasText: "GPT 分析中" }).waitFor({ timeout: 3000 }).catch(() => {});
+    await page.locator("#instant-wordbook-bubble", { hasText: /虽然|Although|句子分析/ }).waitFor({ timeout: 90000 });
+    assert.equal(await page.locator("#instant-wordbook-bubble .iwb-expression-list").count(), 0);
+    assert.equal(await page.locator("#instant-wordbook-bubble .iwb-difficulty-list").count(), 0);
+    await page.getByRole("button", { name: "加入句子本" }).click();
+    await page.locator("#instant-wordbook-bubble", { hasText: /已加入句子本|已在句子本/ }).waitFor({ timeout: 5000 });
 
     const dashboard = await context.newPage();
     dashboard.on("dialog", (dialog) => dialog.accept());
@@ -193,6 +228,10 @@ async function assertDownload(page, buttonSelector, expectedExt) {
     await dashboard.locator(".notebook-button", { hasText: "阅读" }).click();
     await dashboard.locator("td.word-cell", { hasText: "apple" }).waitFor({ timeout: 10000 });
     await dashboard.locator("td.translation-cell", { hasText: "苹果" }).waitFor();
+    await dashboard.locator(".notebook-button", { hasText: "句子本" }).click();
+    await dashboard.locator("td.sentence-text-cell", { hasText: "Although the task was difficult" }).waitFor({ timeout: 10000 });
+    await dashboard.locator(".sentence-segment").first().waitFor();
+    await dashboard.locator(".notebook-button", { hasText: "阅读" }).click();
 
     await dashboard.fill("#search-input", "apple");
     await dashboard.locator("td.word-cell", { hasText: "apple" }).waitFor();

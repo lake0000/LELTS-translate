@@ -19,6 +19,29 @@ const POS_LABELS = {
   article: "art."
 };
 
+const IRREGULAR_INFLECTIONS = {
+  burnt: { baseWord: "burn", label: "过去式/过去分词" },
+  burned: { baseWord: "burn", label: "过去式/过去分词" },
+  went: { baseWord: "go", label: "过去式" },
+  gone: { baseWord: "go", label: "过去分词" },
+  seen: { baseWord: "see", label: "过去分词" },
+  saw: { baseWord: "see", label: "过去式" },
+  written: { baseWord: "write", label: "过去分词" },
+  wrote: { baseWord: "write", label: "过去式" },
+  taken: { baseWord: "take", label: "过去分词" },
+  took: { baseWord: "take", label: "过去式" },
+  made: { baseWord: "make", label: "过去式/过去分词" },
+  found: { baseWord: "find", label: "过去式/过去分词" },
+  taught: { baseWord: "teach", label: "过去式/过去分词" },
+  bought: { baseWord: "buy", label: "过去式/过去分词" },
+  brought: { baseWord: "bring", label: "过去式/过去分词" },
+  thought: { baseWord: "think", label: "过去式/过去分词" },
+  better: { baseWord: "good", label: "比较级" },
+  best: { baseWord: "good", label: "最高级" },
+  worse: { baseWord: "bad", label: "比较级" },
+  worst: { baseWord: "bad", label: "最高级" }
+};
+
 function sha256(value) {
   return crypto.createHash("sha256").update(value, "utf8").digest("hex");
 }
@@ -40,6 +63,47 @@ function dictionaryCandidates(text) {
   if (compact.endsWith("es") && compact.length > 4) candidates.add(compact.slice(0, -2));
   if (compact.endsWith("s") && compact.length > 3) candidates.add(compact.slice(0, -1));
   return [...candidates].filter(Boolean);
+}
+
+function detectInflection(text) {
+  const compact = String(text || "").trim().toLocaleLowerCase().replace(/^[^a-z]+|[^a-z]+$/g, "");
+  if (!compact || compact.includes(" ")) return null;
+  if (IRREGULAR_INFLECTIONS[compact]) {
+    return {
+      inflected: text,
+      normalizedInflected: compact,
+      ...IRREGULAR_INFLECTIONS[compact]
+    };
+  }
+  if (compact.endsWith("ies") && compact.length > 4) {
+    return { inflected: text, normalizedInflected: compact, baseWord: `${compact.slice(0, -3)}y`, label: "复数/第三人称单数" };
+  }
+  if (compact.endsWith("ing") && compact.length > 5) {
+    const stem = compact.slice(0, -3);
+    return { inflected: text, normalizedInflected: compact, baseWord: stem.endsWith(stem.slice(-1).repeat(2)) ? stem.slice(0, -1) : stem, label: "现在分词/动名词" };
+  }
+  if (compact.endsWith("ed") && compact.length > 4) {
+    const stem = compact.slice(0, -2);
+    return { inflected: text, normalizedInflected: compact, baseWord: stem.endsWith(stem.slice(-1).repeat(2)) ? stem.slice(0, -1) : stem, label: "过去式/过去分词" };
+  }
+  if (compact.endsWith("s") && compact.length > 3 && !compact.endsWith("ss")) {
+    return { inflected: text, normalizedInflected: compact, baseWord: compact.slice(0, -1), label: "复数/第三人称单数" };
+  }
+  return null;
+}
+
+async function buildInflectionInfo(query, env = process.env) {
+  const detected = detectInflection(query);
+  if (!detected || !detected.baseWord || detected.baseWord === detected.normalizedInflected) return null;
+  const data = await requestYoudaoText({ query: detected.baseWord, from: "auto", to: "zh-CHS", env }).catch(() => null);
+  const baseTranslation = data && data.errorCode === "0" ? (data.translation || []).join("；") : "";
+  return {
+    inflected: String(query),
+    baseWord: detected.baseWord,
+    label: detected.label,
+    baseTranslation,
+    note: `${String(query)} 是 ${detected.baseWord} 的${detected.label}`
+  };
 }
 
 async function requestYoudaoText({ query, from = "auto", to = "zh-CHS", env = process.env }) {
@@ -78,6 +142,7 @@ function mockTranslate(text) {
     text,
     translation: item.translation,
     phonetic: item.phonetic,
+    inflection: detectInflection(text),
     raw: { mock: true }
   };
 }
@@ -336,6 +401,7 @@ async function translateWithYoudao({ text, from = "auto", to = "zh-CHS", env = p
         })
       }
     : await lookupDictionary(query, env);
+  const inflection = await buildInflectionInfo(query, env);
   let directTranslation = (data.translation || []).join("；");
   const compactQuery = query.toLocaleLowerCase().replace(/^[^a-z]+|[^a-z]+$/g, "");
   if (isSuspiciousDirectTranslation(directTranslation) && compactQuery.endsWith("s") && compactQuery.length > 3) {
@@ -371,6 +437,7 @@ async function translateWithYoudao({ text, from = "auto", to = "zh-CHS", env = p
     translation: outputTranslation,
     phonetic: (dictionary && dictionary.phonetic) || basic["us-phonetic"] || basic["uk-phonetic"] || basic.phonetic || "",
     dictionary,
+    inflection,
     raw: sanitizeYoudaoRaw(data)
   };
 }
@@ -383,6 +450,8 @@ module.exports = {
   sanitizeYoudaoRaw,
   lookupDictionary,
   requestYoudaoText,
+  detectInflection,
+  buildInflectionInfo,
   isSuspiciousDirectTranslation,
   repairSummaryHead,
   translateWithYoudao

@@ -5,6 +5,7 @@
   const BUBBLE_ID = "instant-wordbook-bubble";
   let root;
   let currentResult;
+  let currentSentenceResult;
   let currentRect;
 
   function ensureBubble() {
@@ -57,6 +58,7 @@
 
   function showLoading(text, rect) {
     currentResult = null;
+    currentSentenceResult = null;
     render(
       `<div class="iwb-topline"><span class="iwb-word">${escapeHtml(text)}</span></div>
        <div class="iwb-loading">翻译中...</div>`,
@@ -66,6 +68,7 @@
 
   function showLongText(message, rect) {
     currentResult = null;
+    currentSentenceResult = null;
     render(
       `<div class="iwb-state iwb-state-warn">${escapeHtml(message)}</div>`,
       rect
@@ -74,6 +77,7 @@
 
   function showError(message, rect, onRetry) {
     currentResult = null;
+    currentSentenceResult = null;
     render(
       `<button type="button" class="iwb-error">${escapeHtml(message || "翻译失败，点击重试")}</button>`,
       rect
@@ -116,9 +120,81 @@
     return entries ? `<div class="iwb-dictionary">${entries}</div>` : "";
   }
 
+  function inflectionHtml(inflection) {
+    if (!inflection || !inflection.baseWord) return "";
+    const base = inflection.baseTranslation ? `${inflection.baseWord}：${inflection.baseTranslation}` : inflection.baseWord;
+    return `<div class="iwb-inflection">
+      <span class="iwb-inflection-label">词形</span>
+      <span>${escapeHtml(inflection.inflected || currentResult.text)} → <strong>${escapeHtml(base)}</strong></span>
+      <span class="iwb-inflection-note">${escapeHtml(inflection.label || "变形")}</span>
+    </div>`;
+  }
+
+  function segmentRoleLabel(role) {
+    const labels = {
+      core: "主干",
+      subject: "主语",
+      predicate: "谓语",
+      object: "宾语",
+      modifier: "修饰",
+      connector: "连接",
+      clause: "从句",
+      phrase: "短语",
+      other: "其他"
+    };
+    return labels[role] || labels.other;
+  }
+
+  function segmentRoleClass(role) {
+    const allowed = new Set(["core", "subject", "predicate", "object", "modifier", "connector", "clause", "phrase"]);
+    return allowed.has(role) ? role : "other";
+  }
+
+  function highlightedSentenceHtml(analysis) {
+    const segments = analysis && Array.isArray(analysis.segments) ? analysis.segments : [];
+    if (!segments.length) return `<div class="iwb-sentence-highlight">${escapeHtml((analysis && analysis.sentence) || "")}</div>`;
+    return `<div class="iwb-sentence-highlight">${segments
+      .map((segment) => {
+        const role = segmentRoleClass(segment.role);
+        const label = segment.label || segmentRoleLabel(role);
+        const title = [label, segment.translation, segment.note].filter(Boolean).join("：");
+        return `<span class="iwb-segment iwb-segment-${role}" title="${escapeHtml(title)}">
+          <span class="iwb-segment-text">${escapeHtml(segment.text)}</span>
+          <span class="iwb-segment-label">${escapeHtml(label)}</span>
+        </span>`;
+      })
+      .join(" ")}</div>`;
+  }
+
+  function expressionListHtml(items, className) {
+    if (!Array.isArray(items) || !items.length) return "";
+    return `<ul class="${className}">${items
+      .slice(0, 4)
+      .map((item) => {
+        const head = item.text ? `<strong>${escapeHtml(item.text)}</strong>` : "";
+        const body = escapeHtml(item.meaning || item.note || "");
+        return `<li>${head}${head && body ? "：" : ""}${body}</li>`;
+      })
+      .join("")}</ul>`;
+  }
+
+  function segmentLegendHtml(segments) {
+    const roles = [...new Set((segments || []).map((segment) => segmentRoleClass(segment.role)))].slice(0, 6);
+    if (!roles.length) return "";
+    return `<div class="iwb-segment-legend">${roles
+      .map((role) => `<span class="iwb-legend-item iwb-legend-${role}">${escapeHtml(segmentRoleLabel(role))}</span>`)
+      .join("")}</div>`;
+  }
+
   async function loadNotebooks() {
     const response = await chrome.runtime.sendMessage({ type: "listNotebooks" });
     if (!response || !response.ok) throw new Error((response && response.message) || "生词本加载失败");
+    return response.notebooks || [];
+  }
+
+  async function loadSentenceNotebooks() {
+    const response = await chrome.runtime.sendMessage({ type: "listSentenceNotebooks" });
+    if (!response || !response.ok) throw new Error((response && response.message) || "句子本加载失败");
     return response.notebooks || [];
   }
 
@@ -157,12 +233,45 @@
     positionBubble();
   }
 
+  async function addSentence(trigger) {
+    if (!currentSentenceResult) return;
+    if (trigger) {
+      trigger.disabled = true;
+      trigger.textContent = "加入中...";
+    }
+    const notebooks = await loadSentenceNotebooks();
+    const notebook = notebooks[0] || { id: "sentence_default", name: "句子本" };
+    const response = await chrome.runtime.sendMessage({
+      type: "addSentence",
+      payload: {
+        text: currentSentenceResult.text,
+        translation: currentSentenceResult.analysis.translation,
+        analysis: currentSentenceResult.analysis,
+        notebookId: notebook.id,
+        sourceUrl: location.href,
+        sourceTitle: document.title || location.hostname
+      }
+    });
+    if (!response || !response.ok) {
+      if (trigger) {
+        trigger.disabled = false;
+        trigger.textContent = "加入句子本";
+      }
+      setToast((response && response.message) || "加入失败");
+      return;
+    }
+    const message = response.duplicate ? "已在句子本" : "已加入句子本";
+    if (trigger) trigger.textContent = message;
+    setToast(message);
+  }
+
   function setToast(message) {
     const toast = root.querySelector(".iwb-toast");
     if (toast) toast.textContent = message;
   }
 
   function showSuccess(result, rect) {
+    currentSentenceResult = null;
     currentResult = {
       text: result.text,
       word: result.text,
@@ -170,16 +279,23 @@
       translation: result.translation || "",
       phonetic: result.phonetic || "",
       dictionary: result.dictionary || null,
+      inflection: result.inflection || null,
+      baseWord: result.inflection && result.inflection.baseWord ? result.inflection.baseWord : "",
+      baseTranslation: result.inflection && result.inflection.baseTranslation ? result.inflection.baseTranslation : "",
+      inflectionLabel: result.inflection && result.inflection.label ? result.inflection.label : "",
+      inflectionNote: result.inflection && result.inflection.note ? result.inflection.note : "",
       explainsJson: JSON.stringify(result.raw || {})
     };
     const dictHtml = dictionaryHtml(result.dictionary);
     const summary = result.translation ? String(result.translation).split("\n")[0] : "";
+    const formHtml = inflectionHtml(result.inflection);
     render(
       `<div class="iwb-topline">
         <span class="iwb-word">${escapeHtml(result.text)}</span>
         ${result.cached ? '<span class="iwb-cache">已缓存</span>' : ""}
        </div>
        ${result.phonetic ? `<div class="iwb-phonetic">/${escapeHtml(result.phonetic)}/</div>` : ""}
+       ${formHtml}
        ${summary ? `<div class="iwb-summary">${escapeHtml(summary)}</div>` : ""}
        ${dictHtml || `<div class="iwb-translation">${escapeHtml(result.translation || "无翻译结果")}</div>`}
        <div class="iwb-actions">
@@ -194,6 +310,42 @@
       rect
     );
     bindSuccessActions();
+  }
+
+  function showSentenceLoading(text, rect) {
+    currentResult = null;
+    currentSentenceResult = null;
+    render(
+      `<div class="iwb-topline"><span class="iwb-word">句子分析</span></div>
+       <div class="iwb-sentence-source">${escapeHtml(text)}</div>
+       <div class="iwb-loading">GPT 分析中...</div>`,
+      rect
+    );
+  }
+
+  function showSentenceSuccess(result, rect) {
+    currentResult = null;
+    const analysis = result.analysis || {};
+    currentSentenceResult = {
+      text: result.text || analysis.sentence || "",
+      analysis
+    };
+    render(
+      `<div class="iwb-topline">
+        <span class="iwb-word">句子分析</span>
+       </div>
+       ${highlightedSentenceHtml(analysis)}
+       ${segmentLegendHtml(analysis.segments)}
+       <div class="iwb-sentence-translation">${escapeHtml(analysis.translation || "无整句翻译")}</div>
+       <div class="iwb-actions">
+         <button type="button" class="iwb-primary" data-action="save-sentence">加入句子本</button>
+         <button type="button" class="iwb-ghost" data-action="copy-sentence">复制</button>
+         <button type="button" class="iwb-ghost" data-action="dashboard">词库</button>
+       </div>
+       <div class="iwb-toast" aria-live="polite"></div>`,
+      rect
+    );
+    bindSentenceActions();
   }
 
   function bindSuccessActions() {
@@ -236,6 +388,21 @@
     });
   }
 
+  function bindSentenceActions() {
+    root.querySelector('[data-action="save-sentence"]').addEventListener("click", (event) => {
+      addSentence(event.currentTarget).catch((error) => setToast(error.message || "加入失败"));
+    });
+    root.querySelector('[data-action="copy-sentence"]').addEventListener("click", async () => {
+      const analysis = currentSentenceResult ? currentSentenceResult.analysis : {};
+      const text = `${currentSentenceResult.text}\n${analysis.translation || ""}`;
+      await navigator.clipboard.writeText(text).catch(() => {});
+      setToast("已复制");
+    });
+    root.querySelector('[data-action="dashboard"]').addEventListener("click", () => {
+      chrome.runtime.sendMessage({ type: "openDashboard" });
+    });
+  }
+
   function hide() {
     if (root) root.classList.add("iwb-hidden");
   }
@@ -245,6 +412,8 @@
     showLongText,
     showError,
     showSuccess,
+    showSentenceLoading,
+    showSentenceSuccess,
     hide
   };
 })();

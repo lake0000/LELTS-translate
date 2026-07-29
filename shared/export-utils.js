@@ -5,7 +5,7 @@
     root.WordbookExport = factory(root.WordTranslateNormalize);
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function createExportUtils(normalize) {
-  const CSV_HEADERS = ["生词本", "单词", "翻译", "音标", "来源标题", "来源链接", "添加时间"];
+  const CSV_HEADERS = ["生词本", "单词", "原形", "词形说明", "翻译", "音标", "来源标题", "来源链接", "添加时间"];
 
   function csvEscape(value) {
     const text = String(value ?? "");
@@ -26,6 +26,8 @@
       rows.push([
         names.get(word.notebookId) || "",
         word.text || "",
+        word.baseWord || "",
+        word.inflectionLabel || "",
         word.translation || "",
         word.phonetic || "",
         word.sourceTitle || "",
@@ -59,4 +61,3 @@
     timestampName
   };
 });
-
