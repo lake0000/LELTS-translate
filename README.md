@@ -29,6 +29,16 @@ It is not only a simple selection translator. It combines:
 
 The project is especially useful for IELTS-style reading practice, English news reading, and local HTML reading exercises.
 
+## Why I Built This
+
+This project started from my own IELTS preparation workflow.
+
+While practicing reading with materials from different websites, I found that vocabulary review was often fragmented. Some platforms provide a built-in wordbook only behind a paid feature, while others do not support exporting saved words at all. Switching between multiple sites also means the words, phrases, and sentence notes are scattered everywhere.
+
+Dedicated translation apps can solve part of the problem, but many of them are too heavy for this specific use case, and some useful features are tied to subscriptions. I wanted something simpler: a browser extension that works wherever the reading page runs, keeps all collected words in one local place, and lets me export them when needed.
+
+LELTS Translate is the result of that idea. It uses a translation API for words and a GPT-compatible API for sentence structure analysis. Since the plugin runs in the browser, it can work across different reading websites after normal extension permission setup. The API usage cost is usually low for personal study, and the data stays organized in a local wordbook and sentence notebook.
+
 ## Preview
 
 ### Selection Translation
